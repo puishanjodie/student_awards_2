@@ -1,0 +1,283 @@
+```html
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>學生比賽及獲獎紀錄系統</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f4f7f6;
+            margin: 0;
+            padding: 20px;
+            color: #333;
+        }
+        .container {
+            max-width: 1000px;
+            margin: auto;
+            background: #fff;
+            padding: 20px 30px;
+            border-radius: 8px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            text-align: center;
+            color: #2c3e50;
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 10px;
+        }
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        .form-group {
+            display: flex;
+            flex-direction: column;
+        }
+        .form-group label {
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #2c3e50;
+        }
+        .form-group input, .form-group select {
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        .form-group.full-width {
+            grid-column: span 2;
+        }
+        button {
+            background-color: #3498db;
+            color: white;
+            padding: 12px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            width: 100%;
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background-color: #2980b9;
+        }
+        .search-container {
+            margin: 30px 0 15px 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .search-container input {
+            padding: 10px;
+            width: 300px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        th {
+            background-color: #f8f9fa;
+            color: #2c3e50;
+            white-space: nowrap;
+        }
+        tr:hover {
+            background-color: #f1f1f1;
+        }
+        .no-records {
+            text-align: center;
+            padding: 20px;
+            color: #7f8c8d;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>學生比賽及獲獎紀錄系統</h1>
+
+    <!-- 資料輸入表單 -->
+    <form id="recordForm">
+        <div class="form-grid">
+            <div class="form-group">
+                <label for="studentName">學生姓名 *</label>
+                <input type="text" id="studentName" required placeholder="例如：陳小明">
+            </div>
+            <div class="form-group">
+                <label for="studentClass">班別 *</label>
+                <input type="text" id="studentClass" required placeholder="例如：6A">
+            </div>
+            <div class="form-group">
+                <label for="studentId">學號 *</label>
+                <input type="text" id="studentId" required placeholder="例如：20230101">
+            </div>
+            <div class="form-group">
+                <label for="category">比賽範疇 *</label>
+                <select id="category" required>
+                    <option value="">請選擇...</option>
+                    <option value="學術 (中/英/數/常)">學術 (中/英/數/常)</option>
+                    <option value="體育">體育</option>
+                    <option value="藝術與音樂">藝術與音樂</option>
+                    <option value="STEAM與資訊科技">STEAM與資訊科技</option>
+                    <option value="制服團隊/服務">制服團隊/服務</option>
+                    <option value="其他">其他</option>
+                </select>
+            </div>
+            <div class="form-group full-width">
+                <label for="organizer">舉辦機構 *</label>
+                <input type="text" id="organizer" required placeholder="例如：教育局 / 香港學界體育聯會">
+            </div>
+            <div class="form-group full-width">
+                <label for="competitionName">比賽名稱 *</label>
+                <input type="text" id="competitionName" required placeholder="例如：全港小學數學比賽">
+            </div>
+            <div class="form-group">
+                <label for="award">獲獎紀錄 *</label>
+                <input type="text" id="award" required placeholder="例如：冠軍 / 金獎 / 參與證書">
+            </div>
+            <div class="form-group">
+                <label for="teacherInCharge">負責輸入老師 *</label>
+                <input type="text" id="teacherInCharge" required placeholder="例如：王大文老師">
+            </div>
+        </div>
+        <button type="submit">新增紀錄</button>
+    </form>
+
+    <!-- 搜尋與資料列表 -->
+    <div class="search-container">
+        <h2>紀錄列表</h2>
+        <input type="text" id="searchInput" placeholder="搜尋學生姓名或學號..." onkeyup="filterRecords()">
+    </div>
+
+    <div style="overflow-x: auto;">
+        <table id="recordsTable">
+            <thead>
+                <tr>
+                    <th>姓名</th>
+                    <th>班別</th>
+                    <th>學號</th>
+                    <th>比賽範疇</th>
+                    <th>舉辦機構</th>
+                    <th>比賽名稱</th>
+                    <th>獲獎紀錄</th>
+                    <th>負責老師</th>
+                    <th>輸入日期</th>
+                </tr>
+            </thead>
+            <tbody id="tableBody">
+                <!-- 紀錄將透過 JavaScript 動態生成於此 -->
+            </tbody>
+        </table>
+        <div id="noDataMessage" class="no-records" style="display: none;">
+            目前沒有符合的紀錄。
+        </div>
+    </div>
+</div>
+
+<script>
+    // 初始化時從 LocalStorage 讀取資料
+    let records = JSON.parse(localStorage.getItem('studentRecords')) || [];
+
+    // 表單提交事件
+    document.getElementById('recordForm').addEventListener('submit', function(e) {
+        e.preventDefault(); // 防止網頁重新整理
+
+        // 取得輸入值
+        const newRecord = {
+            id: Date.now(), // 唯一識別碼
+            studentName: document.getElementById('studentName').value,
+            studentClass: document.getElementById('studentClass').value,
+            studentId: document.getElementById('studentId').value,
+            category: document.getElementById('category').value,
+            organizer: document.getElementById('organizer').value,
+            competitionName: document.getElementById('competitionName').value,
+            award: document.getElementById('award').value,
+            teacherInCharge: document.getElementById('teacherInCharge').value,
+            dateAdded: new Date().toLocaleDateString('zh-HK')
+        };
+
+        // 加入陣列並儲存至 LocalStorage
+        records.unshift(newRecord); // 將新紀錄加到最前面
+        localStorage.setItem('studentRecords', JSON.stringify(records));
+
+        // 清空表單並重新渲染表格
+        this.reset();
+        renderTable();
+        alert('紀錄已成功新增！');
+    });
+
+    // 渲染表格內容
+    function renderTable(dataToRender = records) {
+        const tbody = document.getElementById('tableBody');
+        const noDataMessage = document.getElementById('noDataMessage');
+        tbody.innerHTML = '';
+
+        if (dataToRender.length === 0) {
+            noDataMessage.style.display = 'block';
+            document.getElementById('recordsTable').style.display = 'none';
+            return;
+        }
+
+        noDataMessage.style.display = 'none';
+        document.getElementById('recordsTable').style.display = 'table';
+
+        dataToRender.forEach(record => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>${escapeHTML(record.studentName)}</td>
+                <td>${escapeHTML(record.studentClass)}</td>
+                <td>${escapeHTML(record.studentId)}</td>
+                <td>${escapeHTML(record.category)}</td>
+                <td>${escapeHTML(record.organizer)}</td>
+                <td>${escapeHTML(record.competitionName)}</td>
+                <td><strong style="color: #e67e22;">${escapeHTML(record.award)}</strong></td>
+                <td>${escapeHTML(record.teacherInCharge)}</td>
+                <td>${record.dateAdded}</td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }
+
+    // 搜尋功能
+    function filterRecords() {
+        const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+        const filtered = records.filter(record => 
+            record.studentName.toLowerCase().includes(searchTerm) || 
+            record.studentId.toLowerCase().includes(searchTerm)
+        );
+        renderTable(filtered);
+    }
+
+    // 防止 XSS 攻擊的簡單過濾函數
+    function escapeHTML(str) {
+        return str.replace(/[&<>'"]/g, 
+            tag => ({
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                "'": '&#39;',
+                '"': '&quot;'
+            }[tag] || tag)
+        );
+    }
+
+    // 頁面載入時首次渲染表格
+    window.onload = () => {
+        renderTable();
+    };
+</script>
+
+</body>
+</html>
+```
