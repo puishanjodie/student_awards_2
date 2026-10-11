@@ -148,6 +148,16 @@
         button.bulk-unaward-btn:hover {
             background-color: #d68910;
         }
+        button.bulk-merit-btn {
+            background-color: #3498db;
+            flex: none;
+            width: auto;
+            padding: 8px 15px;
+            font-size: 14px;
+        }
+        button.bulk-merit-btn:hover {
+            background-color: #2980b9;
+        }
 
         /* 批量輸入區塊 */
         #batchSection {
@@ -215,11 +225,11 @@
             padding: 10px;
             text-align: left;
             border-bottom: 1px solid #ddd;
+            white-space: nowrap; /* 強制所有表格內容不換行，解決斷開問題 */
         }
         th {
             background-color: #f8f9fa;
             color: #2c3e50;
-            white-space: nowrap;
         }
         tr:hover {
             background-color: #f1f1f1;
@@ -265,6 +275,7 @@
         }
         .status-yes { background-color: #2ecc71; }
         .status-no { background-color: #95a5a6; }
+        .status-merit-yes { background-color: #3498db; }
     </style>
 </head>
 <body>
@@ -280,8 +291,8 @@
     <div id="batchSection">
         <div class="form-group">
             <label>批量輸入資料 (從 Excel 複製貼上)</label>
-            <p>請確保欄位順序為：<br><strong>學生姓名、班別、學號、比賽範疇、舉辦機構、比賽名稱、獲獎紀錄、負責老師、已校內頒獎(是/否)</strong>。(直接從 Excel 複製整段表格貼上即可)</p>
-            <textarea id="batchData" rows="6" placeholder="陳大文	六甲	20230101	學術 (中文)	教育局	校際寫作比賽	冠軍	王老師	是..."></textarea>
+            <p>請確保欄位順序為：<br><strong>學生姓名、班別、學號、比賽範疇、舉辦機構、比賽名稱、獲獎紀錄、負責老師、已校內頒獎(是/否)、已入優點(是/否)</strong>。(直接從 Excel 複製整段表格貼上即可)</p>
+            <textarea id="batchData" rows="6" placeholder="陳大文	六甲	20230101	學術 (中文)	教育局	校際寫作比賽	冠軍	王老師	是	是..."></textarea>
         </div>
         <div class="button-group" style="margin-top: 10px; margin-bottom: 0;">
             <button type="button" style="background-color: #1abc9c;" onclick="processBatchInput()">確認批量匯入</button>
@@ -337,9 +348,15 @@
             </div>
 
             <!-- 校內頒獎勾選 -->
-            <div class="form-group checkbox-group full-width">
+            <div class="form-group checkbox-group">
                 <input type="checkbox" id="awardedInSchool">
-                <label for="awardedInSchool"><strong>已於校內頒獎</strong> (勾選代表已在早會或其他場合頒發獎項)</label>
+                <label for="awardedInSchool"><strong>已於校內頒獎</strong></label>
+            </div>
+            
+            <!-- 成績表輸入優點勾選 -->
+            <div class="form-group checkbox-group">
+                <input type="checkbox" id="meritEntered">
+                <label for="meritEntered"><strong>已在成績表輸入優點</strong></label>
             </div>
         </div>
         <div class="button-group">
@@ -353,9 +370,10 @@
         <h2>紀錄列表</h2>
         <div class="search-controls">
             <button type="button" class="bulk-delete-btn" onclick="deleteSelected()">刪除已選取</button>
-            <!-- 新增：批量修改頒獎狀態按鈕 -->
-            <button type="button" class="bulk-award-btn" onclick="bulkUpdateAwardStatus(true)">標記為已頒獎</button>
-            <button type="button" class="bulk-unaward-btn" onclick="bulkUpdateAwardStatus(false)">標記為未頒獎</button>
+            <button type="button" class="bulk-award-btn" onclick="bulkUpdateAwardStatus(true)">標記已頒獎</button>
+            <button type="button" class="bulk-unaward-btn" onclick="bulkUpdateAwardStatus(false)">標記未頒獎</button>
+            <button type="button" class="bulk-merit-btn" onclick="bulkUpdateMeritStatus(true)">標記已入優點</button>
+            <button type="button" class="bulk-unaward-btn" onclick="bulkUpdateMeritStatus(false)">標記未入優點</button>
             <button type="button" class="export-btn" onclick="exportToCSV()">匯出資料 (CSV)</button>
 
             <!-- 單一/範圍日期搜尋 -->
@@ -408,6 +426,7 @@
                     <th>比賽名稱</th>
                     <th>獲獎紀錄</th>
                     <th>校內頒獎</th>
+                    <th>成績表優點</th>
                     <th>負責老師</th>
                     <th>輸入/修改時間</th>
                     <th>操作</th>
@@ -479,7 +498,8 @@
             competitionName: document.getElementById('competitionName').value.trim(),
             award: document.getElementById('award').value.trim(),
             teacherInCharge: document.getElementById('teacherInCharge').value.trim(),
-            awardedInSchool: document.getElementById('awardedInSchool').checked
+            awardedInSchool: document.getElementById('awardedInSchool').checked,
+            meritEntered: document.getElementById('meritEntered').checked
         };
 
         if (editingId) {
@@ -536,6 +556,7 @@
 
             if (cols.length >= 8) {
                 const isAwarded = (cols[8] && (cols[8].trim() === '是' || cols[8].trim() === 'Y' || cols[8].trim() === 'true')) ? true : false;
+                const isMeritEntered = (cols[9] && (cols[9].trim() === '是' || cols[9].trim() === 'Y' || cols[9].trim() === 'true')) ? true : false;
 
                 records.unshift({
                     id: Date.now() + Math.random(), 
@@ -548,6 +569,7 @@
                     award: cols[6].trim(),
                     teacherInCharge: cols[7].trim(),
                     awardedInSchool: isAwarded,
+                    meritEntered: isMeritEntered,
                     dateAdded: getCurrentDateTime(),
                     dateUpdated: null
                 });
@@ -581,6 +603,7 @@
         document.getElementById('award').value = record.award || '';
         document.getElementById('teacherInCharge').value = record.teacherInCharge;
         document.getElementById('awardedInSchool').checked = record.awardedInSchool || false;
+        document.getElementById('meritEntered').checked = record.meritEntered || false;
 
         editingId = id;
         document.getElementById('submitBtn').textContent = '更新紀錄';
@@ -628,7 +651,6 @@
         }
     }
 
-    // 新增：批量修改校內頒獎狀態
     function bulkUpdateAwardStatus(status) {
         const selectedCheckboxes = document.querySelectorAll('.record-checkbox:checked');
         if (selectedCheckboxes.length === 0) {
@@ -639,16 +661,37 @@
         const statusText = status ? '已頒獎' : '未頒獎';
         if (confirm(`確定要將選取的 ${selectedCheckboxes.length} 筆紀錄設定為「${statusText}」嗎？`)) {
             const selectedIds = Array.from(selectedCheckboxes).map(cb => Number(cb.value));
-            
+
             records.forEach(r => {
                 if (selectedIds.includes(r.id)) {
                     r.awardedInSchool = status;
-                    // 同時更新最後修改時間
                     r.dateUpdated = getCurrentDateTime();
                 }
             });
-            
-            // 取消全選勾選狀態
+
+            document.getElementById('selectAll').checked = false;
+            saveAndRender();
+        }
+    }
+
+    function bulkUpdateMeritStatus(status) {
+        const selectedCheckboxes = document.querySelectorAll('.record-checkbox:checked');
+        if (selectedCheckboxes.length === 0) {
+            alert('請先在列表中勾選要修改的紀錄。');
+            return;
+        }
+
+        const statusText = status ? '已入優點' : '未入優點';
+        if (confirm(`確定要將選取的 ${selectedCheckboxes.length} 筆紀錄設定為「${statusText}」嗎？`)) {
+            const selectedIds = Array.from(selectedCheckboxes).map(cb => Number(cb.value));
+
+            records.forEach(r => {
+                if (selectedIds.includes(r.id)) {
+                    r.meritEntered = status;
+                    r.dateUpdated = getCurrentDateTime();
+                }
+            });
+
             document.getElementById('selectAll').checked = false;
             saveAndRender();
         }
@@ -739,7 +782,7 @@
             return;
         }
 
-        let csvContent = "學生姓名,班別,學號,比賽範疇,舉辦機構,比賽名稱,獲獎紀錄,校內頒獎,負責輸入老師,新增時間,最後修改時間\n";
+        let csvContent = "學生姓名,班別,學號,比賽範疇,舉辦機構,比賽名稱,獲獎紀錄,校內頒獎,成績表優點,負責輸入老師,新增時間,最後修改時間\n";
 
         dataToExport.forEach(r => {
             let row = [
@@ -751,6 +794,7 @@
                 `"${r.competitionName || ''}"`,
                 `"${r.award || ''}"`,
                 `"${r.awardedInSchool ? '是' : '否'}"`,
+                `"${r.meritEntered ? '是' : '否'}"`,
                 `"${r.teacherInCharge || ''}"`,
                 `"${r.dateAdded || ''}"`,
                 `"${r.dateUpdated || ''}"`
@@ -790,12 +834,17 @@
         document.getElementById('recordsTable').style.display = 'table';
 
         dataToRender.forEach(record => {
+            // 移除了 <br>，強制將日期與標籤放在同一行
             const displayDate = record.dateUpdated 
-                ? `<span class="date-info">修改於:<br>${record.dateUpdated}</span>`
-                : `<span class="date-info">新增於:<br>${record.dateAdded}</span>`;
+                ? `<span class="date-info">修改於: ${record.dateUpdated}</span>`
+                : `<span class="date-info">新增於: ${record.dateAdded}</span>`;
 
             const awardStatus = record.awardedInSchool 
                 ? `<span class="status-badge status-yes">是</span>`
+                : `<span class="status-badge status-no">否</span>`;
+                
+            const meritStatus = record.meritEntered 
+                ? `<span class="status-badge status-merit-yes">是</span>`
                 : `<span class="status-badge status-no">否</span>`;
 
             const tr = document.createElement('tr');
@@ -809,6 +858,7 @@
                 <td>${escapeHTML(record.competitionName)}</td>
                 <td><strong style="color: #e67e22;">${escapeHTML(record.award || '-')}</strong></td>
                 <td>${awardStatus}</td>
+                <td>${meritStatus}</td>
                 <td>${escapeHTML(record.teacherInCharge)}</td>
                 <td>${displayDate}</td>
                 <td class="action-btns">
