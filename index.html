@@ -13,7 +13,7 @@
             color: #333;
         }
         .container {
-            max-width: 1000px;
+            max-width: 1050px;
             margin: auto;
             background: #fff;
             padding: 20px 30px;
@@ -42,6 +42,11 @@
             font-weight: bold;
             color: #2c3e50;
         }
+        .form-group label span.hint {
+            font-size: 12px;
+            color: #e74c3c;
+            font-weight: normal;
+        }
         .form-group input, .form-group select, .form-group textarea {
             padding: 10px;
             border: 1px solid #ccc;
@@ -50,6 +55,24 @@
         }
         .form-group.full-width {
             grid-column: span 2;
+        }
+        .form-group.checkbox-group {
+            flex-direction: row;
+            align-items: center;
+            gap: 10px;
+            background-color: #f8f9fa;
+            padding: 10px;
+            border-radius: 4px;
+            border: 1px solid #ccc;
+        }
+        .form-group.checkbox-group input {
+            transform: scale(1.3);
+            margin: 0;
+            cursor: pointer;
+        }
+        .form-group.checkbox-group label {
+            margin-bottom: 0;
+            cursor: pointer;
         }
         .button-group {
             display: flex;
@@ -85,7 +108,27 @@
         button.batch-toggle-btn:hover {
             background-color: #27ae60;
         }
-        
+        button.bulk-delete-btn {
+            background-color: #e74c3c;
+            flex: none;
+            width: auto;
+            padding: 8px 15px;
+            font-size: 14px;
+        }
+        button.bulk-delete-btn:hover {
+            background-color: #c0392b;
+        }
+        button.export-btn {
+            background-color: #8e44ad;
+            flex: none;
+            width: auto;
+            padding: 8px 15px;
+            font-size: 14px;
+        }
+        button.export-btn:hover {
+            background-color: #9b59b6;
+        }
+
         /* 批量輸入區塊 */
         #batchSection {
             display: none;
@@ -99,20 +142,34 @@
             margin-top: 0;
             font-size: 14px;
             color: #16a085;
+            line-height: 1.5;
         }
-        
+
         /* 搜尋與表格 */
         .search-container {
             margin: 30px 0 15px 0;
             display: flex;
             justify-content: space-between;
             align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
         }
-        .search-container input {
+        .search-controls {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        .search-controls input, .search-controls select {
             padding: 10px;
-            width: 350px;
             border: 1px solid #ccc;
             border-radius: 4px;
+        }
+        .search-controls input[type="text"] {
+            width: 220px;
+        }
+        .search-controls input[type="date"] {
+            cursor: pointer;
         }
         table {
             width: 100%;
@@ -160,6 +217,20 @@
             font-size: 12px;
             color: #7f8c8d;
         }
+        input[type="checkbox"] {
+            transform: scale(1.2);
+            cursor: pointer;
+        }
+        .status-badge {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: bold;
+            color: white;
+        }
+        .status-yes { background-color: #2ecc71; }
+        .status-no { background-color: #95a5a6; }
     </style>
 </head>
 <body>
@@ -175,8 +246,8 @@
     <div id="batchSection">
         <div class="form-group">
             <label>批量輸入資料 (從 Excel 複製貼上)</label>
-            <p>請確保欄位順序為：<strong>學生姓名、班別、學號、比賽範疇、舉辦機構、比賽名稱、獲獎紀錄、負責老師</strong>。(直接從 Excel 複製整段表格貼上即可)</p>
-            <textarea id="batchData" rows="6" placeholder="陳大文	6A	20230101	學術 (中文)	教育局	校際寫作比賽	冠軍	王老師..."></textarea>
+            <p>請確保欄位順序為：<br><strong>學生姓名、班別、學號、比賽範疇、舉辦機構、比賽名稱、獲獎紀錄、負責老師、已校內頒獎(是/否)</strong>。(直接從 Excel 複製整段表格貼上即可)</p>
+            <textarea id="batchData" rows="6" placeholder="陳大文	六甲	20230101	學術 (中文)	教育局	校際寫作比賽	冠軍	王老師	是..."></textarea>
         </div>
         <div class="button-group" style="margin-top: 10px; margin-bottom: 0;">
             <button type="button" style="background-color: #1abc9c;" onclick="processBatchInput()">確認批量匯入</button>
@@ -187,12 +258,12 @@
     <form id="recordForm">
         <div class="form-grid">
             <div class="form-group">
-                <label for="studentName">學生姓名 *</label>
+                <label for="studentName">學生姓名 * <span class="hint">(請以中文輸入)</span></label>
                 <input type="text" id="studentName" required placeholder="例如：陳小明">
             </div>
             <div class="form-group">
-                <label for="studentClass">班別 *</label>
-                <input type="text" id="studentClass" required placeholder="例如：6A">
+                <label for="studentClass">班別 * <span class="hint">(請以中文輸入)</span></label>
+                <input type="text" id="studentClass" required placeholder="例如：六甲">
             </div>
             <div class="form-group">
                 <label for="studentId">學號 *</label>
@@ -230,6 +301,12 @@
                 <label for="teacherInCharge">負責輸入老師 *</label>
                 <input type="text" id="teacherInCharge" required placeholder="例如：王大文老師">
             </div>
+            
+            <!-- 新增：是否已於校內頒獎 -->
+            <div class="form-group checkbox-group full-width">
+                <input type="checkbox" id="awardedInSchool">
+                <label for="awardedInSchool"><strong>已於校內頒獎</strong> (勾選代表已在早會或其他場合頒發獎項)</label>
+            </div>
         </div>
         <div class="button-group">
             <button type="submit" id="submitBtn">新增單筆紀錄</button>
@@ -240,13 +317,37 @@
     <!-- 搜尋與資料列表 -->
     <div class="search-container">
         <h2>紀錄列表</h2>
-        <input type="text" id="searchInput" placeholder="搜尋姓名、學號、比賽名稱或範疇..." onkeyup="filterRecords()">
+        <div class="search-controls">
+            <button type="button" class="bulk-delete-btn" onclick="deleteSelected()">刪除已選取</button>
+            <button type="button" class="export-btn" onclick="exportToCSV()">匯出資料 (CSV)</button>
+
+            <!-- 按日期搜尋 -->
+            <input type="date" id="dateFilter" title="選擇新增或修改的日期" onchange="filterRecords()">
+
+            <!-- 比賽範疇下拉式篩選 -->
+            <select id="categoryFilter" onchange="filterRecords()">
+                <option value="">所有範疇</option>
+                <option value="學術 (中文)">學術 (中文)</option>
+                <option value="學術 (英文)">學術 (英文)</option>
+                <option value="學術 (數學)">學術 (數學)</option>
+                <option value="學術 (常識)">學術 (常識)</option>
+                <option value="藝術">藝術</option>
+                <option value="音樂">音樂</option>
+                <option value="體育">體育</option>
+                <option value="STEAM與資訊科技">STEAM與資訊科技</option>
+                <option value="制服團隊/服務">制服團隊/服務</option>
+                <option value="其他">其他</option>
+            </select>
+
+            <input type="text" id="searchInput" placeholder="搜尋姓名、學號或比賽名稱..." onkeyup="filterRecords()">
+        </div>
     </div>
 
     <div style="overflow-x: auto;">
         <table id="recordsTable">
             <thead>
                 <tr>
+                    <th><input type="checkbox" id="selectAll" onclick="toggleSelectAll()"></th>
                     <th>姓名</th>
                     <th>班別</th>
                     <th>學號</th>
@@ -254,8 +355,9 @@
                     <th>舉辦機構</th>
                     <th>比賽名稱</th>
                     <th>獲獎紀錄</th>
+                    <th>校內頒獎</th>
                     <th>負責老師</th>
-                    <th>輸入/最後修改時間</th>
+                    <th>輸入/修改時間</th>
                     <th>操作</th>
                 </tr>
             </thead>
@@ -274,7 +376,7 @@
     let records = JSON.parse(localStorage.getItem('studentRecords')) || [];
     let editingId = null; 
 
-    // 取得當下時間格式 (加入時間可更精準辨識修改紀錄)
+    // 取得當下時間格式 (保留時間)
     function getCurrentDateTime() {
         return new Date().toLocaleString('zh-HK', { hour12: false });
     }
@@ -291,28 +393,27 @@
             organizer: document.getElementById('organizer').value.trim(),
             competitionName: document.getElementById('competitionName').value.trim(),
             award: document.getElementById('award').value.trim(),
-            teacherInCharge: document.getElementById('teacherInCharge').value.trim()
+            teacherInCharge: document.getElementById('teacherInCharge').value.trim(),
+            awardedInSchool: document.getElementById('awardedInSchool').checked // 儲存頒獎狀態
         };
 
         if (editingId) {
-            // 更新現有紀錄並加上修改時間
             const index = records.findIndex(r => r.id === editingId);
             if (index !== -1) {
                 records[index] = { 
                     ...records[index], 
                     ...recordData,
-                    dateUpdated: getCurrentDateTime() // 自動記錄修改時間
+                    dateUpdated: getCurrentDateTime() 
                 };
             }
             alert('紀錄已成功更新！');
             cancelEdit(); 
         } else {
-            // 新增紀錄並加上輸入時間
             const newRecord = {
                 id: Date.now(), 
                 ...recordData,
                 dateAdded: getCurrentDateTime(),
-                dateUpdated: null // 剛新增時無修改時間
+                dateUpdated: null 
             };
             records.unshift(newRecord); 
             alert('單筆紀錄已成功新增！');
@@ -327,31 +428,33 @@
         const section = document.getElementById('batchSection');
         if (section.style.display === 'none' || section.style.display === '') {
             section.style.display = 'block';
-            document.getElementById('recordForm').style.display = 'none'; // 隱藏單筆表單避免混淆
+            document.getElementById('recordForm').style.display = 'none';
         } else {
             section.style.display = 'none';
             document.getElementById('recordForm').style.display = 'block';
         }
     }
 
-    // 處理批量輸入 (處理 Excel 貼上，以 Tab 或逗號分隔)
+    // 處理批量輸入
     function processBatchInput() {
         const rawData = document.getElementById('batchData').value;
         const lines = rawData.split('\n');
         let addedCount = 0;
 
         for (let line of lines) {
-            if (!line.trim()) continue; // 跳過空行
-            
-            // 嘗試以 Tab 分割 (Excel 預設)，若無則以逗號分割 (CSV)
+            if (!line.trim()) continue; 
+
             let cols = line.split('\t');
             if (cols.length < 8) {
                 cols = line.split(','); 
             }
 
             if (cols.length >= 8) {
+                // 檢查第九個欄位(是否校內頒獎)
+                const isAwarded = (cols[8] && (cols[8].trim() === '是' || cols[8].trim() === 'Y' || cols[8].trim() === 'true')) ? true : false;
+
                 records.unshift({
-                    id: Date.now() + Math.random(), // 確保快速迴圈時 ID 唯一
+                    id: Date.now() + Math.random(), 
                     studentName: cols[0].trim(),
                     studentClass: cols[1].trim(),
                     studentId: cols[2].trim(),
@@ -360,6 +463,7 @@
                     competitionName: cols[5].trim(),
                     award: cols[6].trim(),
                     teacherInCharge: cols[7].trim(),
+                    awardedInSchool: isAwarded,
                     dateAdded: getCurrentDateTime(),
                     dateUpdated: null
                 });
@@ -371,9 +475,9 @@
             saveAndRender();
             alert(`成功批量匯入 ${addedCount} 筆紀錄！`);
             document.getElementById('batchData').value = '';
-            toggleBatchSection(); // 匯入完自動關閉批量視窗
+            toggleBatchSection(); 
         } else {
-            alert('匯入失敗。請檢查資料格式是否正確（每行需包含 8 個對應的欄位）。');
+            alert('匯入失敗。請檢查資料格式是否正確（每行需包含至少 8 個對應的欄位）。');
         }
     }
 
@@ -382,7 +486,6 @@
         const record = records.find(r => r.id === id);
         if (!record) return;
 
-        // 如果在批量模式，切換回單筆模式以進行修改
         document.getElementById('batchSection').style.display = 'none';
         document.getElementById('recordForm').style.display = 'block';
 
@@ -394,6 +497,7 @@
         document.getElementById('competitionName').value = record.competitionName;
         document.getElementById('award').value = record.award || '';
         document.getElementById('teacherInCharge').value = record.teacherInCharge;
+        document.getElementById('awardedInSchool').checked = record.awardedInSchool || false;
 
         editingId = id;
         document.getElementById('submitBtn').textContent = '更新紀錄';
@@ -412,7 +516,7 @@
         document.getElementById('cancelEditBtn').style.display = 'none';
     }
 
-    // 刪除紀錄
+    // 單筆刪除紀錄
     function deleteRecord(id) {
         if (confirm('確定要刪除這筆紀錄嗎？此動作無法復原。')) {
             records = records.filter(r => r.id !== id);
@@ -420,10 +524,132 @@
         }
     }
 
+    // 全選/取消全選
+    function toggleSelectAll() {
+        const selectAllCheckbox = document.getElementById('selectAll');
+        const checkboxes = document.querySelectorAll('.record-checkbox');
+        checkboxes.forEach(cb => {
+            cb.checked = selectAllCheckbox.checked;
+        });
+    }
+
+    // 批量刪除已勾選紀錄
+    function deleteSelected() {
+        const selectedCheckboxes = document.querySelectorAll('.record-checkbox:checked');
+        if (selectedCheckboxes.length === 0) {
+            alert('請先在列表中勾選要刪除的紀錄。');
+            return;
+        }
+
+        if (confirm(`確定要刪除已選取的 ${selectedCheckboxes.length} 筆紀錄嗎？此動作無法復原。`)) {
+            const selectedIds = Array.from(selectedCheckboxes).map(cb => Number(cb.value));
+            records = records.filter(r => !selectedIds.includes(r.id));
+            document.getElementById('selectAll').checked = false;
+            saveAndRender();
+        }
+    }
+
+    // 匯出資料為 CSV (支援揀選後匯出)
+    function exportToCSV() {
+        if (records.length === 0) {
+            alert('目前沒有資料可以匯出。');
+            return;
+        }
+
+        let dataToExport = [];
+        const selectedCheckboxes = document.querySelectorAll('.record-checkbox:checked');
+
+        if (selectedCheckboxes.length > 0) {
+            const selectedIds = Array.from(selectedCheckboxes).map(cb => Number(cb.value));
+            dataToExport = records.filter(r => selectedIds.includes(r.id));
+        } else {
+            const confirmExport = confirm('您目前沒有勾選任何紀錄。\n\n按下「確定」將匯出目前畫面上的篩選紀錄。\n按下「取消」則返回。');
+            if (!confirmExport) return;
+
+            // 取得目前篩選條件
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+            const categoryFilterValue = document.getElementById('categoryFilter').value;
+            const dateFilterValue = document.getElementById('dateFilter').value;
+
+            let formattedSearchDates = [];
+            if (dateFilterValue) {
+                const d = new Date(dateFilterValue);
+                const yyyy = d.getFullYear();
+                const mm = String(d.getMonth() + 1);
+                const dd = String(d.getDate());
+                const mm2 = mm.padStart(2, '0');
+                const dd2 = dd.padStart(2, '0');
+                
+                formattedSearchDates = [
+                    `${yyyy}/${mm}/${dd}`, `${yyyy}/${mm2}/${dd2}`,
+                    `${dd}/${mm}/${yyyy}`, `${dd2}/${mm2}/${yyyy}`,
+                    `${yyyy}-${mm}-${dd}`, `${yyyy}-${mm2}-${dd2}`
+                ];
+            }
+
+            dataToExport = records.filter(record => {
+                const matchText = 
+                    (record.studentName && record.studentName.toLowerCase().includes(searchTerm)) || 
+                    (record.studentId && record.studentId.toLowerCase().includes(searchTerm)) ||
+                    (record.competitionName && record.competitionName.toLowerCase().includes(searchTerm)) ||
+                    (record.category && record.category.toLowerCase().includes(searchTerm));
+
+                const matchCategory = (categoryFilterValue === "") || (record.category === categoryFilterValue);
+                
+                let matchDate = true;
+                if (dateFilterValue) {
+                    const added = record.dateAdded || '';
+                    const updated = record.dateUpdated || '';
+                    matchDate = formattedSearchDates.some(fmt => added.includes(fmt) || updated.includes(fmt));
+                }
+
+                return matchText && matchCategory && matchDate;
+            });
+        }
+
+        if (dataToExport.length === 0) {
+            alert('沒有符合的資料可以匯出。');
+            return;
+        }
+
+        // CSV 標題列 (新增校內頒獎)
+        let csvContent = "學生姓名,班別,學號,比賽範疇,舉辦機構,比賽名稱,獲獎紀錄,校內頒獎,負責輸入老師,新增時間,最後修改時間\n";
+
+        // 整理每一列的資料
+        dataToExport.forEach(r => {
+            let row = [
+                `"${r.studentName || ''}"`,
+                `"${r.studentClass || ''}"`,
+                `"${r.studentId || ''}"`,
+                `"${r.category || ''}"`,
+                `"${r.organizer || ''}"`,
+                `"${r.competitionName || ''}"`,
+                `"${r.award || ''}"`,
+                `"${r.awardedInSchool ? '是' : '否'}"`,
+                `"${r.teacherInCharge || ''}"`,
+                `"${r.dateAdded || ''}"`,
+                `"${r.dateUpdated || ''}"`
+            ];
+            csvContent += row.join(",") + "\n";
+        });
+
+        // 加上 BOM 確保 Excel 顯示中文
+        const bom = "\uFEFF";
+        const blob = new Blob([bom + csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+
+        const link = document.createElement("a");
+        link.setAttribute("href", url);
+        link.setAttribute("download", "student_records.csv");
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    }
+
     // 儲存並渲染
     function saveAndRender() {
         localStorage.setItem('studentRecords', JSON.stringify(records));
-        filterRecords(); // 重新渲染並套用目前的搜尋條件
+        filterRecords(); 
     }
 
     // 渲染表格內容
@@ -442,13 +668,17 @@
         document.getElementById('recordsTable').style.display = 'table';
 
         dataToRender.forEach(record => {
-            // 判斷顯示的日期：有修改過就顯示修改時間，否則顯示建立時間
             const displayDate = record.dateUpdated 
                 ? `<span class="date-info">修改於:<br>${record.dateUpdated}</span>`
                 : `<span class="date-info">新增於:<br>${record.dateAdded}</span>`;
 
+            const awardStatus = record.awardedInSchool 
+                ? `<span class="status-badge status-yes">是</span>`
+                : `<span class="status-badge status-no">否</span>`;
+
             const tr = document.createElement('tr');
             tr.innerHTML = `
+                <td><input type="checkbox" class="record-checkbox" value="${record.id}"></td>
                 <td>${escapeHTML(record.studentName)}</td>
                 <td>${escapeHTML(record.studentClass)}</td>
                 <td>${escapeHTML(record.studentId)}</td>
@@ -456,6 +686,7 @@
                 <td>${escapeHTML(record.organizer)}</td>
                 <td>${escapeHTML(record.competitionName)}</td>
                 <td><strong style="color: #e67e22;">${escapeHTML(record.award || '-')}</strong></td>
+                <td>${awardStatus}</td>
                 <td>${escapeHTML(record.teacherInCharge)}</td>
                 <td>${displayDate}</td>
                 <td class="action-btns">
@@ -467,15 +698,55 @@
         });
     }
 
-    // 進階搜尋功能 (姓名、學號、比賽名稱、範疇)
+    // 進階搜尋功能 (文字搜尋 + 下拉選單 + 日期篩選)
     function filterRecords() {
         const searchTerm = document.getElementById('searchInput').value.toLowerCase();
-        const filtered = records.filter(record => 
-            (record.studentName && record.studentName.toLowerCase().includes(searchTerm)) || 
-            (record.studentId && record.studentId.toLowerCase().includes(searchTerm)) ||
-            (record.competitionName && record.competitionName.toLowerCase().includes(searchTerm)) ||
-            (record.category && record.category.toLowerCase().includes(searchTerm))
-        );
+        const categoryFilterValue = document.getElementById('categoryFilter').value;
+        const dateFilterValue = document.getElementById('dateFilter').value;
+
+        // 處理日期格式比對
+        let formattedSearchDates = [];
+        if (dateFilterValue) {
+            const d = new Date(dateFilterValue);
+            const yyyy = d.getFullYear();
+            const mm = String(d.getMonth() + 1);
+            const dd = String(d.getDate());
+            const mm2 = mm.padStart(2, '0');
+            const dd2 = dd.padStart(2, '0');
+            
+            // 涵蓋多種可能的 toLocaleString 產出格式
+            formattedSearchDates = [
+                `${yyyy}/${mm}/${dd}`, `${yyyy}/${mm2}/${dd2}`,
+                `${dd}/${mm}/${yyyy}`, `${dd2}/${mm2}/${yyyy}`,
+                `${yyyy}-${mm}-${dd}`, `${yyyy}-${mm2}-${dd2}`
+            ];
+        }
+
+        const filtered = records.filter(record => {
+            // 文字搜尋配對
+            const matchText = 
+                (record.studentName && record.studentName.toLowerCase().includes(searchTerm)) || 
+                (record.studentId && record.studentId.toLowerCase().includes(searchTerm)) ||
+                (record.competitionName && record.competitionName.toLowerCase().includes(searchTerm)) ||
+                (record.category && record.category.toLowerCase().includes(searchTerm));
+
+            // 下拉選單配對
+            const matchCategory = (categoryFilterValue === "") || (record.category === categoryFilterValue);
+
+            // 日期配對 (若有選擇日期，檢查新增或更新時間是否包含該日期字串)
+            let matchDate = true;
+            if (dateFilterValue) {
+                const added = record.dateAdded || '';
+                const updated = record.dateUpdated || '';
+                matchDate = formattedSearchDates.some(fmt => added.includes(fmt) || updated.includes(fmt));
+            }
+
+            return matchText && matchCategory && matchDate;
+        });
+
+        // 取消全選框的狀態
+        document.getElementById('selectAll').checked = false;
+
         renderTable(filtered);
     }
 
