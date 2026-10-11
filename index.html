@@ -13,7 +13,7 @@
             color: #333;
         }
         .container {
-            max-width: 1050px;
+            max-width: 1250px; 
             margin: auto;
             background: #fff;
             padding: 20px 30px;
@@ -128,6 +128,26 @@
         button.export-btn:hover {
             background-color: #9b59b6;
         }
+        button.bulk-award-btn {
+            background-color: #27ae60;
+            flex: none;
+            width: auto;
+            padding: 8px 15px;
+            font-size: 14px;
+        }
+        button.bulk-award-btn:hover {
+            background-color: #2ecc71;
+        }
+        button.bulk-unaward-btn {
+            background-color: #f39c12;
+            flex: none;
+            width: auto;
+            padding: 8px 15px;
+            font-size: 14px;
+        }
+        button.bulk-unaward-btn:hover {
+            background-color: #d68910;
+        }
 
         /* 批量輸入區塊 */
         #batchSection {
@@ -158,7 +178,10 @@
             display: flex;
             gap: 10px;
             align-items: center;
-            flex-wrap: wrap;
+            flex-wrap: nowrap;
+            white-space: nowrap;
+            overflow-x: auto;
+            padding-bottom: 5px;
         }
         .search-controls input, .search-controls select {
             padding: 10px;
@@ -166,12 +189,12 @@
             border-radius: 4px;
         }
         .search-controls input[type="text"] {
-            width: 200px;
+            width: 180px;
         }
         .search-controls input[type="date"] {
             cursor: pointer;
         }
-        
+
         .date-filter-group {
             display: flex;
             align-items: center;
@@ -330,6 +353,9 @@
         <h2>紀錄列表</h2>
         <div class="search-controls">
             <button type="button" class="bulk-delete-btn" onclick="deleteSelected()">刪除已選取</button>
+            <!-- 新增：批量修改頒獎狀態按鈕 -->
+            <button type="button" class="bulk-award-btn" onclick="bulkUpdateAwardStatus(true)">標記為已頒獎</button>
+            <button type="button" class="bulk-unaward-btn" onclick="bulkUpdateAwardStatus(false)">標記為未頒獎</button>
             <button type="button" class="export-btn" onclick="exportToCSV()">匯出資料 (CSV)</button>
 
             <!-- 單一/範圍日期搜尋 -->
@@ -338,11 +364,11 @@
                     <option value="single">單一日期</option>
                     <option value="range">日期範圍</option>
                 </select>
-                
+
                 <span id="singleDateContainer">
                     <input type="date" id="singleDate" onchange="filterRecords()">
                 </span>
-                
+
                 <span id="rangeDateContainer" style="display:none;">
                     <input type="date" id="startDate" onchange="filterRecords()">
                     <span>至</span>
@@ -410,18 +436,15 @@
     // 將紀錄中的字串日期解析為 Date 物件，方便範圍比對
     function parseRecordDate(dateString) {
         if (!dateString) return null;
-        // 擷取所有數字 (應對不同的瀏覽器格式 yyyy/mm/dd 或 dd/mm/yyyy)
         const parts = dateString.match(/(\d+)/g);
         if (!parts || parts.length < 3) return null;
-        
+
         let year, month, day;
         if (parseInt(parts[0]) > 1000) { 
-            // 格式為 YYYY/MM/DD
             year = parseInt(parts[0]);
             month = parseInt(parts[1]) - 1;
             day = parseInt(parts[2]);
         } else if (parseInt(parts[2]) > 1000) { 
-            // 格式為 DD/MM/YYYY
             day = parseInt(parts[0]);
             month = parseInt(parts[1]) - 1;
             year = parseInt(parts[2]);
@@ -605,28 +628,50 @@
         }
     }
 
-    // 取得目前條件下篩選出的資料 (共用於列表渲染與匯出)
+    // 新增：批量修改校內頒獎狀態
+    function bulkUpdateAwardStatus(status) {
+        const selectedCheckboxes = document.querySelectorAll('.record-checkbox:checked');
+        if (selectedCheckboxes.length === 0) {
+            alert('請先在列表中勾選要修改的紀錄。');
+            return;
+        }
+
+        const statusText = status ? '已頒獎' : '未頒獎';
+        if (confirm(`確定要將選取的 ${selectedCheckboxes.length} 筆紀錄設定為「${statusText}」嗎？`)) {
+            const selectedIds = Array.from(selectedCheckboxes).map(cb => Number(cb.value));
+            
+            records.forEach(r => {
+                if (selectedIds.includes(r.id)) {
+                    r.awardedInSchool = status;
+                    // 同時更新最後修改時間
+                    r.dateUpdated = getCurrentDateTime();
+                }
+            });
+            
+            // 取消全選勾選狀態
+            document.getElementById('selectAll').checked = false;
+            saveAndRender();
+        }
+    }
+
     function getFilteredRecords() {
         const searchTerm = document.getElementById('searchInput').value.toLowerCase();
         const categoryFilterValue = document.getElementById('categoryFilter').value;
-        
+
         const dateMode = document.getElementById('dateMode').value;
         const singleDateVal = document.getElementById('singleDate').value;
         const startDateVal = document.getElementById('startDate').value;
         const endDateVal = document.getElementById('endDate').value;
 
         return records.filter(record => {
-            // 文字搜尋配對
             const matchText = 
                 (record.studentName && record.studentName.toLowerCase().includes(searchTerm)) || 
                 (record.studentId && record.studentId.toLowerCase().includes(searchTerm)) ||
                 (record.competitionName && record.competitionName.toLowerCase().includes(searchTerm)) ||
                 (record.category && record.category.toLowerCase().includes(searchTerm));
 
-            // 下拉選單配對
             const matchCategory = (categoryFilterValue === "") || (record.category === categoryFilterValue);
 
-            // 處理日期比對邏輯
             let matchDate = true;
             const recordDateStr = record.dateUpdated || record.dateAdded;
             const recordDate = parseRecordDate(recordDateStr);
@@ -644,10 +689,10 @@
                 if (recordDate) {
                     const sDate = startDateVal ? new Date(startDateVal) : null;
                     const eDate = endDateVal ? new Date(endDateVal) : null;
-                    
+
                     if (sDate) sDate.setHours(0, 0, 0, 0);
-                    if (eDate) eDate.setHours(23, 59, 59, 999); // 包涵當天結束前
-                    
+                    if (eDate) eDate.setHours(23, 59, 59, 999);
+
                     if (sDate && eDate) {
                         matchDate = (recordDate >= sDate && recordDate <= eDate);
                     } else if (sDate) {
@@ -670,7 +715,6 @@
         renderTable(filtered);
     }
 
-    // 匯出資料為 CSV (支援揀選後匯出 或 條件篩選後匯出)
     function exportToCSV() {
         if (records.length === 0) {
             alert('目前沒有資料可以匯出。');
@@ -681,14 +725,12 @@
         const selectedCheckboxes = document.querySelectorAll('.record-checkbox:checked');
 
         if (selectedCheckboxes.length > 0) {
-            // 有勾選時，只匯出勾選的項目
             const selectedIds = Array.from(selectedCheckboxes).map(cb => Number(cb.value));
             dataToExport = records.filter(r => selectedIds.includes(r.id));
         } else {
-            // 沒勾選時，詢問是否匯出目前的篩選結果
             const confirmExport = confirm('您目前沒有勾選任何紀錄。\n\n按下「確定」將匯出目前畫面上的篩選紀錄。\n按下「取消」則返回。');
             if (!confirmExport) return;
-            
+
             dataToExport = getFilteredRecords();
         }
 
@@ -716,7 +758,6 @@
             csvContent += row.join(",") + "\n";
         });
 
-        // 加上 BOM 確保 Excel 顯示中文
         const bom = "\uFEFF";
         const blob = new Blob([bom + csvContent], { type: 'text/csv;charset=utf-8;' });
         const url = URL.createObjectURL(blob);
@@ -779,7 +820,6 @@
         });
     }
 
-    // 防止 XSS 攻擊
     function escapeHTML(str) {
         if (!str) return '';
         return String(str).replace(/[&<>'"]/g, 
@@ -800,4 +840,3 @@
 
 </body>
 </html>
-```
